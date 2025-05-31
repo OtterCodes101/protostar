@@ -1,7 +1,7 @@
-use std::ops::Add;
+#![allow(dead_code)]
 
 use crate::{APP_SIZE, PADDING};
-use tween::TweenTime;
+use std::ops::Add;
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Hex {
@@ -26,9 +26,9 @@ impl Hex {
 	}
 
 	pub fn get_coords(&self) -> [f32; 3] {
-		let x = 3.0 / 2.0 * (APP_SIZE + PADDING) / 2.0 * (-self.q - self.s).to_f32();
+		let x = 3.0 / 2.0 * (APP_SIZE + PADDING) / 2.0 * (-self.q - self.s) as f32;
 		let y = 3.0_f32.sqrt() * (APP_SIZE + PADDING) / 2.0
-			* ((-self.q - self.s).to_f32() / 2.0 + self.s.to_f32());
+			* ((-self.q - self.s) as f32 / 2.0 + self.s as f32);
 		[x, y, 0.0]
 	}
 
@@ -38,6 +38,35 @@ impl Hex {
 
 	pub fn scale(self, factor: isize) -> Self {
 		Hex::new(self.q * factor, self.r * factor, self.s * factor)
+	}
+
+	/// outputs a hexagon at an outward spiral at position i, where i=0 is the center.
+	pub fn spiral(i: usize) -> Self {
+		if i == 0 {
+			return HEX_CENTER;
+		}
+
+		// Calculate which ring this index belongs to
+		let mut ring = 1;
+		let mut cells_before_ring = 1;
+		while i >= cells_before_ring + (ring * 6) {
+			cells_before_ring += ring * 6;
+			ring += 1;
+		}
+
+		// Calculate position within the ring
+		let pos_in_ring = i - cells_before_ring;
+		
+		// Start at the top of the ring
+		let mut hex = HEX_CENTER + HEX_DIRECTION_VECTORS[4].scale(ring as isize);
+		
+		// Move clockwise around the ring one step at a time
+		for _ in 0..pos_in_ring {
+			let current_side = (pos_in_ring / ring) % 6;
+			hex = hex + HEX_DIRECTION_VECTORS[(current_side + 1) % 6];
+		}
+
+		hex
 	}
 }
 impl Add for Hex {
