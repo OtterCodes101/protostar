@@ -17,3 +17,15 @@ branch = "dev"
 [workspace.dependencies.asteroids]
 git = "https://github.com/StardustXR/asteroids.git"
 branch = "dev"
+
+[profile]
+
+[profile.wasm-dev]
+inherits = "dev"
+opt-level = 1
+
+[profile.server-dev]
+inherits = "dev"
+
+[profile.android-dev]
+inherits = "dev"
