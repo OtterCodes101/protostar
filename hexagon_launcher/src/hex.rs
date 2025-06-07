@@ -46,24 +46,31 @@ impl Hex {
 			return HEX_CENTER;
 		}
 
-		// Calculate which ring this index belongs to
-		let mut ring = 1;
-		let mut cells_before_ring = 1;
-		while i >= cells_before_ring + (ring * 6) {
-			cells_before_ring += ring * 6;
-			ring += 1;
+		// Find which ring we're in and position within ring
+		let mut cells_before = 1; // Count center
+		let mut radius = 1;
+		
+		while cells_before + (radius * 6) <= i {
+			cells_before += radius * 6;
+			radius += 1;
 		}
 
-		// Calculate position within the ring
-		let pos_in_ring = i - cells_before_ring;
+		// Calculate steps needed within current ring
+		let pos_in_ring = i - cells_before;
 		
-		// Start at the top of the ring
-		let mut hex = HEX_CENTER + HEX_DIRECTION_VECTORS[4].scale(ring as isize);
-		
-		// Move clockwise around the ring one step at a time
-		for _ in 0..pos_in_ring {
-			let current_side = (pos_in_ring / ring) % 6;
-			hex = hex + HEX_DIRECTION_VECTORS[(current_side + 1) % 6];
+		// Start at top of ring (same as original code)
+		let mut hex = HEX_CENTER + HEX_DIRECTION_VECTORS[4].scale(radius as isize);
+
+		// Walk around sides just like original code
+		let mut steps_taken = 0;
+		for side in 0..6 {
+			for _ in 0..radius {
+				if steps_taken == pos_in_ring {
+					return hex;
+				}
+				hex = hex.neighbor(side);
+				steps_taken += 1;
+			}
 		}
 
 		hex
