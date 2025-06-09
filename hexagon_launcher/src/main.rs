@@ -4,18 +4,21 @@ mod hex;
 use app::App;
 use asteroids::{
 	ClientState, CustomElement, Element, Migrate, Reify, Transformable, client,
-	elements::{Button, Model, ModelPart, Spatial},
+	elements::{Button, Grabbable, Model, ModelPart, Spatial},
 };
 use glam::Quat;
 use hex::Hex;
+use mint::{Quaternion, Vector3};
 use protostar::xdg::{get_desktop_files, parse_desktop_file};
 use serde::{Deserialize, Serialize};
 use stardust_xr_fusion::{
 	core::values::color::{Rgba, color_space::LinearRgb, rgba_linear},
 	drawable::MaterialParameter,
+	fields::{CylinderShape, Shape},
 	project_local_resources,
 	spatial::Transform,
 };
+use stardust_xr_molecules::PointerMode;
 use std::f32::consts::PI;
 use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -50,13 +53,26 @@ async fn main() {
 	client::run::<HexagonLauncher>(&[&project_local_resources!("../res")]).await
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct HexagonLauncher {
 	/// if the hexagon launcher is expanded
 	open: bool,
+	pos: Vector3<f32>,
+	rot: Quaternion<f32>,
 	#[serde(skip)]
 	/// position in the vector is mapped to hex coordinates
 	apps: Vec<App>,
+}
+
+impl Default for HexagonLauncher {
+	fn default() -> Self {
+		Self {
+			open: Default::default(),
+			pos: [0.0; 3].into(),
+			rot: Quat::IDENTITY.into(),
+			apps: Default::default(),
+		}
+	}
 }
 impl Migrate for HexagonLauncher {
 	type Old = Self;
@@ -80,47 +96,59 @@ impl ClientState for HexagonLauncher {
 	#[tracing::instrument]
 	fn reify(&self) -> Element<Self> {
 		// Build UI based on current state
-		Spatial::default()
-			.zoneable(true)
-			.build()
-			.child({
-				Button::new(|state: &mut HexagonLauncher| {
-					state.open = !state.open;
-				})
-				.size([APP_SIZE; 2])
-				.build()
-				.child(
-					Model::namespaced("protostar", "hexagon/hexagon")
-						.transform(Transform::from_rotation_scale(
-							Quat::from_rotation_x(PI / 2.0) * Quat::from_rotation_y(PI),
-							[MODEL_SCALE; 3],
-						))
-						.part(ModelPart::new("Hex").mat_param(
-							"color",
-							MaterialParameter::Color(if self.open {
-								BTN_SELECTED_COLOR
-							} else {
-								BTN_COLOR
-							}),
-						))
-						.build(),
-				)
+		Grabbable::new(
+			Shape::Cylinder(CylinderShape {
+				radius: APP_SIZE / 2.0,
+				length: 0.01,
+			}),
+			self.pos,
+			self.rot,
+			|state: &mut Self, pos, rot| {
+				state.pos = pos;
+				state.rot = rot;
+			},
+		)
+		.pointer_mode(PointerMode::Align)
+		.zoneable(false)
+		.build()
+		.child({
+			Button::new(|state: &mut HexagonLauncher| {
+				state.open = !state.open;
 			})
-			.children(
-				self.open
-					.then(|| {
-						self.apps.iter().enumerate().map(|(i, app)| {
-							Spatial::default()
-								.pos(Hex::spiral(i + 1).get_coords())
-								.build()
-								.identify(&app.app.name().map(ToString::to_string))
-								.child(app.reify_substate(move |state: &mut HexagonLauncher| {
-									state.apps.get_mut(i)
-								}))
-						})
+			.size([APP_SIZE; 2])
+			.build()
+		})
+		.child(
+			Model::namespaced("protostar", "hexagon/hexagon")
+				.transform(Transform::from_rotation_scale(
+					Quat::from_rotation_x(PI / 2.0) * Quat::from_rotation_y(PI),
+					[MODEL_SCALE; 3],
+				))
+				.part(ModelPart::new("Hex").mat_param(
+					"color",
+					MaterialParameter::Color(if self.open {
+						BTN_SELECTED_COLOR
+					} else {
+						BTN_COLOR
+					}),
+				))
+				.build(),
+		)
+		.children(
+			self.open
+				.then(|| {
+					self.apps.iter().enumerate().map(|(i, app)| {
+						Spatial::default()
+							.pos(Hex::spiral(i + 1).get_coords())
+							.build()
+							.identify(&app.app.name())
+							.child(app.reify_substate(move |state: &mut HexagonLauncher| {
+								state.apps.get_mut(i)
+							}))
 					})
-					.into_iter()
-					.flatten(),
-			)
+				})
+				.into_iter()
+				.flatten(),
+		)
 	}
 }

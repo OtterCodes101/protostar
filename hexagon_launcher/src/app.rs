@@ -5,6 +5,7 @@ use glam::{Quat, Vec3};
 use mint::{Quaternion, Vector3};
 use protostar::application::Application;
 use protostar::xdg::{DesktopFile, Icon, IconType};
+use stardust_xr_fusion::drawable::{TextBounds, TextFit};
 use stardust_xr_fusion::values::ResourceID;
 use stardust_xr_fusion::{
 	drawable::{MaterialParameter, XAlign, YAlign},
@@ -17,10 +18,10 @@ use std::f32::consts::PI;
 #[derive(Debug)]
 pub struct App {
 	pub app: Application,
-	pub icon: Option<Icon>,
-	pub pos: Vector3<f32>,
-	pub rot: Quaternion<f32>,
-	pub launching: bool,
+	icon: Option<Icon>,
+	pos: Vector3<f32>,
+	rot: Quaternion<f32>,
+	launching: bool,
 }
 impl App {
 	pub fn new(desktop_entry: DesktopFile) -> Self {
@@ -58,7 +59,7 @@ impl App {
 
 				match other {
 					Some((IconType::Png, icon)) => model.part(ModelPart::new("Icon").mat_param(
-						"icon",
+						"diffuse",
 						MaterialParameter::Texture(ResourceID::Direct(icon.path.clone())),
 					)),
 					_ => model,
@@ -92,19 +93,27 @@ impl Reify for App {
 				if pos_vec.length_squared() > ACTIVATION_DISTANCE {
 					state.launching = true;
 				}
+				state.pos = [0.0; 3].into();
+				state.rot = Quat::IDENTITY.into();
 			}
 		})
-		.pointer_mode(PointerMode::Move)
+		.pointer_mode(PointerMode::Align)
 		.max_distance(0.05)
 		.build()
 		.child(self.create_model())
 		.child({
 			Text::default()
 				.text(self.app.name().unwrap_or_default())
-				.character_height(APP_SIZE * 0.25)
+				.character_height(0.005)
+				.bounds(TextBounds {
+					bounds: [0.5, 0.5].into(),
+					fit: TextFit::Wrap,
+					anchor_align_x: XAlign::Center,
+					anchor_align_y: YAlign::Top,
+				})
 				.text_align_x(XAlign::Center)
 				.text_align_y(YAlign::Center)
-				.pos([0.0, 0.0, -(APP_SIZE * 1.5)])
+				.pos([0.0, -APP_SIZE * 0.35, 0.001])
 				.rot(Quat::from_rotation_y(PI))
 				.build()
 		})

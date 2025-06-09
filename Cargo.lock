@@ -180,7 +180,7 @@ dependencies = [
 [[package]]
 name = "asteroids"
 version = "2.0.0"
-source = "git+https://github.com/StardustXR/asteroids.git?branch=dev#9cfa7b968bc6d963cff6580cda2e0b936be83b37"
+source = "git+https://github.com/StardustXR/asteroids.git?branch=dev#e4d5c48c3b1b714707133d474f53f9f1388a6045"
 dependencies = [
  "ashpd",
  "derive-where",
