@@ -3,7 +3,7 @@ mod hex;
 
 use app::App;
 use asteroids::{
-	ClientState, Element, ElementTrait, Migrate, Reify, Transformable, client,
+	ClientState, CustomElement, Element, Migrate, Reify, Transformable, client,
 	elements::{Button, Model, ModelPart, Spatial},
 };
 use glam::Quat;
@@ -17,7 +17,7 @@ use stardust_xr_fusion::{
 	spatial::Transform,
 };
 use std::f32::consts::PI;
-use tracing_subscriber::EnvFilter;
+use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt, util::SubscriberInitExt};
 
 // Constants from original implementation
 const APP_SIZE: f32 = 0.06;
@@ -32,9 +32,20 @@ const BTN_COLOR: Rgba<f32, LinearRgb> = rgba_linear!(1.0, 1.0, 0.0, 1.0);
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
 	color_eyre::install().unwrap();
-	tracing_subscriber::fmt()
-		.with_env_filter(EnvFilter::from_default_env())
-		.init();
+
+	let registry = tracing_subscriber::registry();
+	#[cfg(feature = "tracy")]
+	let registry = registry.with({
+		use tracing_subscriber::Layer;
+		tracing_tracy::TracyLayer::new(tracing_tracy::DefaultConfig::default())
+			.with_filter(tracing::level_filters::LevelFilter::DEBUG)
+	});
+	let log_layer = tracing_subscriber::fmt::Layer::new()
+		.with_thread_names(true)
+		.with_ansi(true)
+		.with_line_number(true)
+		.with_filter(EnvFilter::from_default_env());
+	registry.with(log_layer).init();
 
 	client::run::<HexagonLauncher>(&[&project_local_resources!("../res")]).await
 }
@@ -64,63 +75,52 @@ impl ClientState for HexagonLauncher {
 
 		// Sort by name
 		self.apps
-			.sort_by_key(|app| app.desktop_entry.name.clone().unwrap_or_default());
+			.sort_by_key(|app| app.app.name().unwrap_or_default().to_string());
 	}
+	#[tracing::instrument]
 	fn reify(&self) -> Element<Self> {
 		// Build UI based on current state
-		let center_button = self.create_center_button();
-		let app_grid = self.create_app_grid();
-
 		Spatial::default()
 			.zoneable(true)
-			.with_children([center_button, app_grid])
-	}
-}
-
-impl HexagonLauncher {
-	fn create_center_button(&self) -> Element<Self> {
-		let model = Model::namespaced("protostar", "hexagon/hexagon")
-			.transform(Transform::from_rotation_scale(
-				Quat::from_rotation_x(PI / 2.0) * Quat::from_rotation_y(PI),
-				[MODEL_SCALE; 3],
-			))
-			.part(ModelPart::new("Hex").mat_param(
-				"color",
-				MaterialParameter::Color(if self.open {
-					BTN_SELECTED_COLOR
-				} else {
-					BTN_COLOR
-				}),
-			))
-			.build();
-
-		Button::new(|state: &mut Self| {
-			state.open = !state.open;
-		})
-		.size([APP_SIZE; 2])
-		.with_children([model])
-	}
-
-	fn create_app_grid(&self) -> Element<Self> {
-		// Create a spatial that contains all app launchers
-		if !self.open {
-			// Return empty if not open
-			return Spatial::default().build();
-		}
-
-		// Create each app launcher using reify
-		let app_elements: Vec<Element<Self>> = self
-			.apps
-			.iter()
-			.enumerate()
-			.map(|(i, app)| {
-				let app = app.reify_substate(move |state: &mut Self| state.apps.get_mut(i));
-				Spatial::default()
-					.pos(Hex::spiral(i + 1).get_coords())
-					.with_children([app])
+			.build()
+			.child({
+				Button::new(|state: &mut HexagonLauncher| {
+					state.open = !state.open;
+				})
+				.size([APP_SIZE; 2])
+				.build()
+				.child(
+					Model::namespaced("protostar", "hexagon/hexagon")
+						.transform(Transform::from_rotation_scale(
+							Quat::from_rotation_x(PI / 2.0) * Quat::from_rotation_y(PI),
+							[MODEL_SCALE; 3],
+						))
+						.part(ModelPart::new("Hex").mat_param(
+							"color",
+							MaterialParameter::Color(if self.open {
+								BTN_SELECTED_COLOR
+							} else {
+								BTN_COLOR
+							}),
+						))
+						.build(),
+				)
 			})
-			.collect();
-
-		Spatial::default().with_children(app_elements)
+			.children(
+				self.open
+					.then(|| {
+						self.apps.iter().enumerate().map(|(i, app)| {
+							Spatial::default()
+								.pos(Hex::spiral(i + 1).get_coords())
+								.build()
+								.identify(&app.app.name().map(ToString::to_string))
+								.child(app.reify_substate(move |state: &mut HexagonLauncher| {
+									state.apps.get_mut(i)
+								}))
+						})
+					})
+					.into_iter()
+					.flatten(),
+			)
 	}
 }

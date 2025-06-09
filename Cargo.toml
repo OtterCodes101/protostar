@@ -20,6 +20,9 @@ branch = "dev"
 
 [profile]
 
+[profile.dev]
+opt-level = 3
+
 [profile.wasm-dev]
 inherits = "dev"
 opt-level = 1
