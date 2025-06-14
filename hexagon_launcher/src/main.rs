@@ -19,7 +19,7 @@ use stardust_xr_fusion::{
 	spatial::Transform,
 };
 use stardust_xr_molecules::PointerMode;
-use std::f32::consts::PI;
+use std::f32::consts::{FRAC_PI_2, PI};
 use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt, util::SubscriberInitExt};
 
 // Constants from original implementation
@@ -108,6 +108,7 @@ impl ClientState for HexagonLauncher {
 				state.rot = rot;
 			},
 		)
+		.field_transform(Transform::from_rotation(Quat::from_rotation_x(FRAC_PI_2)))
 		.pointer_mode(PointerMode::Align)
 		.zoneable(false)
 		.build()

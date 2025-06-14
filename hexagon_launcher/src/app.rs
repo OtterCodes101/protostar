@@ -13,7 +13,7 @@ use stardust_xr_fusion::{
 	spatial::Transform,
 };
 use stardust_xr_molecules::PointerMode;
-use std::f32::consts::PI;
+use std::f32::consts::{FRAC_PI_2, PI};
 
 #[derive(Debug)]
 pub struct App {
@@ -97,6 +97,7 @@ impl Reify for App {
 				state.rot = Quat::IDENTITY.into();
 			}
 		})
+		.field_transform(Transform::from_rotation(Quat::from_rotation_x(FRAC_PI_2)))
 		.pointer_mode(PointerMode::Align)
 		.max_distance(0.05)
 		.build()
