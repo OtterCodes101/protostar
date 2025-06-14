@@ -101,7 +101,7 @@ impl Reify for App {
 		.max_distance(0.05)
 		.build()
 		.child(self.create_model())
-		.child({
+		.child(
 			Text::default()
 				.text(self.app.name().unwrap_or_default())
 				.character_height(0.005)
@@ -115,7 +115,7 @@ impl Reify for App {
 				.text_align_y(YAlign::Center)
 				.pos([0.0, -APP_SIZE * 0.35, 0.001])
 				.rot(Quat::from_rotation_y(PI))
-				.build()
-		})
+				.build(),
+		)
 	}
 }
