@@ -13,11 +13,13 @@ use stardust_xr_fusion::{
 	spatial::Transform,
 };
 use std::f32::consts::{FRAC_PI_2, PI};
+use std::sync::OnceLock;
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct App {
 	pub app: Application,
-	icon: Option<Icon>,
+	#[serde(skip)]
+	icon: OnceLock<Icon>,
 	pos: Vector3<f32>,
 	rot: Quaternion<f32>,
 	launching: bool,
@@ -26,8 +28,8 @@ impl App {
 	pub fn new(desktop_entry: DesktopFile) -> Self {
 		let app = Application::create(desktop_entry).unwrap();
 		App {
-			icon: app.icon(64, true).and_then(|i| i.cached_process(64).ok()),
 			app,
+			icon: None,
 			pos: [0.0; 3].into(),
 			rot: Quat::IDENTITY.into(),
 			launching: false,
@@ -37,6 +39,9 @@ impl App {
 	// Helper functions for creating app components
 	#[tracing::instrument]
 	fn create_model(&self) -> Element<Self> {
+		let icon = self
+			.icon
+			.get_or_init(|| app.icon(64, true).and_then(|i| i.cached_process(64).ok()));
 		match self.icon.as_ref().map(|i| (i.icon_type.clone(), i)) {
 			Some((IconType::Gltf, icon)) => Model::direct(icon.path.clone())
 				.unwrap()
@@ -69,7 +74,6 @@ impl App {
 	}
 }
 impl Reify for App {
-	#[tracing::instrument]
 	fn reify(&self) -> Element<Self> {
 		// The field shape for the grabbable
 		let field_shape = Shape::Cylinder(CylinderShape {

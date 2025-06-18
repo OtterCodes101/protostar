@@ -4,7 +4,7 @@ mod hex;
 use app::App;
 use asteroids::{
 	ClientState, CustomElement, Element, Migrate, Reify, Transformable, client,
-	elements::{Button, Grabbable, Model, ModelPart, Spatial},
+	elements::{Button, Grabbable, Model, ModelPart, PointerMode, Spatial},
 };
 use glam::Quat;
 use hex::Hex;
@@ -18,7 +18,6 @@ use stardust_xr_fusion::{
 	project_local_resources,
 	spatial::Transform,
 };
-use stardust_xr_molecules::PointerMode;
 use std::f32::consts::{FRAC_PI_2, PI};
 use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -67,10 +66,10 @@ pub struct HexagonLauncher {
 impl Default for HexagonLauncher {
 	fn default() -> Self {
 		Self {
-			open: Default::default(),
+			open: false,
 			pos: [0.0; 3].into(),
 			rot: Quat::IDENTITY.into(),
-			apps: Default::default(),
+			apps: Vec::new(),
 		}
 	}
 }
@@ -112,13 +111,14 @@ impl ClientState for HexagonLauncher {
 		.pointer_mode(PointerMode::Align)
 		.zoneable(false)
 		.build()
-		.child({
+		.child(
 			Button::new(|state: &mut HexagonLauncher| {
 				state.open = !state.open;
 			})
-			.size([APP_SIZE; 2])
-			.build()
-		})
+			.pos([0.0, 0.0, 0.005])
+			.size([APP_SIZE / 2.0; 2])
+			.build(),
+		)
 		.child(
 			Model::namespaced("protostar", "hexagon/hexagon")
 				.transform(Transform::from_rotation_scale(
