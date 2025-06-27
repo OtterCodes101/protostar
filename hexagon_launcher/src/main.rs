@@ -80,7 +80,7 @@ impl ClientState for HexagonLauncher {
 		self.apps
 			.sort_by_key(|app| app.app.name().unwrap_or_default().to_string());
 	}
-	#[tracing::instrument]
+	#[tracing::instrument(skip_all)]
 	fn reify(&self) -> Element<Self> {
 		// Build UI based on current state
 		Grabbable::new(
