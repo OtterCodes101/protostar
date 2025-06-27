@@ -122,8 +122,8 @@ fn test_parse_desktop_file() {
 	);
 	assert_eq!(desktop_file.icon, Some("test.png".to_string()));
 }
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(into = "PathBuf", from = "PathBuf")]
 pub struct DesktopFile {
 	path: PathBuf,
 	pub name: Option<String>,
@@ -132,6 +132,18 @@ pub struct DesktopFile {
 	pub icon: Option<String>,
 	pub no_display: bool,
 }
+
+impl From<DesktopFile> for PathBuf {
+	fn from(df: DesktopFile) -> Self {
+		df.path
+	}
+}
+impl From<PathBuf> for DesktopFile {
+	fn from(path: PathBuf) -> Self {
+		Self::parse(path).unwrap()
+	}
+}
+
 impl DesktopFile {
 	pub fn parse(path: PathBuf) -> Result<Self, String> {
 		// Open the file in read-only mode

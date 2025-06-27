@@ -1,10 +1,14 @@
+use crate::app_launcher::AppLauncher;
 use crate::{ACTIVATION_DISTANCE, APP_SIZE, DEFAULT_HEX_COLOR, MODEL_SCALE};
-use asteroids::elements::{Grabbable, Model, ModelPart, PointerMode, Text};
+use asteroids::elements::{
+	Grabbable, Lines, Model, ModelPart, PointerMode, Text, line_from_points,
+};
 use asteroids::{CustomElement, Element, Reify, Transformable};
 use glam::{Quat, Vec3};
 use mint::{Quaternion, Vector3};
 use protostar::application::Application;
 use protostar::xdg::{DesktopFile, Icon, IconType};
+use serde::{Deserialize, Serialize};
 use stardust_xr_fusion::drawable::{TextBounds, TextFit};
 use stardust_xr_fusion::values::ResourceID;
 use stardust_xr_fusion::{
@@ -14,6 +18,7 @@ use stardust_xr_fusion::{
 };
 use std::f32::consts::{FRAC_PI_2, PI};
 use std::sync::OnceLock;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct App {
@@ -22,27 +27,30 @@ pub struct App {
 	icon: OnceLock<Icon>,
 	pos: Vector3<f32>,
 	rot: Quaternion<f32>,
-	launching: bool,
+	#[serde(skip)]
+	launched: AtomicBool,
 }
 impl App {
 	pub fn new(desktop_entry: DesktopFile) -> Self {
 		let app = Application::create(desktop_entry).unwrap();
 		App {
 			app,
-			icon: None,
+			icon: OnceLock::default(),
 			pos: [0.0; 3].into(),
 			rot: Quat::IDENTITY.into(),
-			launching: false,
+			launched: AtomicBool::new(false),
 		}
 	}
 
 	// Helper functions for creating app components
-	#[tracing::instrument]
 	fn create_model(&self) -> Element<Self> {
-		let icon = self
-			.icon
-			.get_or_init(|| app.icon(64, true).and_then(|i| i.cached_process(64).ok()));
-		match self.icon.as_ref().map(|i| (i.icon_type.clone(), i)) {
+		self.icon.get_or_init(|| {
+			self.app
+				.icon(64, true)
+				.and_then(|i| i.cached_process(64).ok())
+				.unwrap()
+		});
+		match self.icon.get().as_ref().map(|i| (i.icon_type.clone(), i)) {
 			Some((IconType::Gltf, icon)) => Model::direct(icon.path.clone())
 				.unwrap()
 				.transform(Transform::from_rotation_scale(
@@ -81,45 +89,68 @@ impl Reify for App {
 			length: 0.01,
 		});
 
-		Grabbable::new(
-			field_shape,
-			self.pos,
-			self.rot,
-			move |state: &mut Self, pos, rot| {
-				state.pos = pos;
-				state.rot = rot;
-			},
-		)
-		.grab_stop({
-			move |state: &mut Self| {
-				let pos_vec = Vec3::from(state.pos);
-				if pos_vec.length_squared() > ACTIVATION_DISTANCE {
-					// state.app.launch(launch_space)
-				}
-				state.pos = [0.0; 3].into();
-				state.rot = Quat::IDENTITY.into();
-			}
-		})
-		.field_transform(Transform::from_rotation(Quat::from_rotation_x(FRAC_PI_2)))
-		.pointer_mode(PointerMode::Align)
-		.max_distance(0.05)
+		let converted = Vec3::from(self.pos);
+		let length = converted.length();
+		let direction = converted.normalize_or_zero();
+
+		Lines::new([line_from_points(vec![
+			Vec3::from([0.0; 3]),
+			(length < ACTIVATION_DISTANCE) as u32 as f32
+				* direction * length.clamp(0.0, ACTIVATION_DISTANCE),
+		])])
 		.build()
-		.child(self.create_model())
 		.child(
-			Text::default()
-				.text(self.app.name().unwrap_or_default())
-				.character_height(0.005)
-				.bounds(TextBounds {
-					bounds: [0.5, 0.5].into(),
-					fit: TextFit::Wrap,
-					anchor_align_x: XAlign::Center,
-					anchor_align_y: YAlign::Top,
-				})
-				.text_align_x(XAlign::Center)
-				.text_align_y(YAlign::Center)
-				.pos([0.0, -APP_SIZE * 0.35, 0.001])
-				.rot(Quat::from_rotation_y(PI))
-				.build(),
+			Grabbable::new(
+				field_shape,
+				self.pos,
+				self.rot,
+				move |state: &mut Self, pos, rot| {
+					state.pos = pos;
+					state.rot = rot;
+				},
+			)
+			.grab_stop({
+				move |state: &mut Self| {
+					let pos_vec = Vec3::from(state.pos);
+					if pos_vec.length() > ACTIVATION_DISTANCE {
+						// state.app.launch(launch_space)
+						state.launched.store(true, Ordering::Relaxed);
+					} else {
+						state.pos = [0.0; 3].into();
+						state.rot = Quat::IDENTITY.into();
+					}
+				}
+			})
+			.field_transform(Transform::from_rotation(Quat::from_rotation_x(FRAC_PI_2)))
+			.pointer_mode(PointerMode::Align)
+			.max_distance(0.05)
+			.build()
+			.child(self.create_model())
+			.children(self.launched.load(Ordering::Relaxed).then(|| {
+				AppLauncher::new(&self.app)
+					.done(|state: &mut Self| {
+						state.launched.store(false, Ordering::Relaxed);
+						state.pos = [0.0; 3].into();
+						state.rot = Quat::IDENTITY.into();
+					})
+					.build()
+			}))
+			.child(
+				Text::default()
+					.text(self.app.name().unwrap_or_default())
+					.character_height(0.005)
+					.bounds(TextBounds {
+						bounds: [0.5, 0.5].into(),
+						fit: TextFit::Wrap,
+						anchor_align_x: XAlign::Center,
+						anchor_align_y: YAlign::Top,
+					})
+					.text_align_x(XAlign::Center)
+					.text_align_y(YAlign::Center)
+					.pos([0.0, -APP_SIZE * 0.35, 0.001])
+					.rot(Quat::from_rotation_y(PI))
+					.build(),
+			),
 		)
 	}
 }

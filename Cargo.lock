@@ -2980,6 +2980,7 @@ dependencies = [
  "color-eyre",
  "glam 0.24.2",
  "manifest-dir-macros",
+ "mint",
  "protostar",
  "serde",
  "stardust-xr-fusion",
