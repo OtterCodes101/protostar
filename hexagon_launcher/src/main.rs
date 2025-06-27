@@ -1,7 +1,5 @@
-mod app;
 mod hex;
 
-use app::App;
 use asteroids::{
 	ClientState, CustomElement, Element, Migrate, Reify, Transformable, client,
 	elements::{Button, Grabbable, Model, ModelPart, PointerMode, Spatial},
@@ -9,10 +7,10 @@ use asteroids::{
 use glam::Quat;
 use hex::Hex;
 use mint::{Quaternion, Vector3};
-use protostar::xdg::{get_desktop_files, parse_desktop_file};
+use protostar::xdg::{DesktopFile, get_desktop_files};
 use serde::{Deserialize, Serialize};
+use single::{APP_SIZE, App, BTN_COLOR, BTN_SELECTED_COLOR, MODEL_SCALE};
 use stardust_xr_fusion::{
-	core::values::color::{Rgba, color_space::LinearRgb, rgba_linear},
 	drawable::MaterialParameter,
 	fields::{CylinderShape, Shape},
 	project_local_resources,
@@ -20,16 +18,6 @@ use stardust_xr_fusion::{
 };
 use std::f32::consts::{FRAC_PI_2, PI};
 use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt, util::SubscriberInitExt};
-
-// Constants from original implementation
-const APP_SIZE: f32 = 0.06;
-const PADDING: f32 = 0.005;
-const MODEL_SCALE: f32 = 0.03;
-const ACTIVATION_DISTANCE: f32 = 0.05;
-
-const DEFAULT_HEX_COLOR: Rgba<f32, LinearRgb> = rgba_linear!(0.211, 0.937, 0.588, 1.0);
-const BTN_SELECTED_COLOR: Rgba<f32, LinearRgb> = rgba_linear!(0.0, 1.0, 0.0, 1.0);
-const BTN_COLOR: Rgba<f32, LinearRgb> = rgba_linear!(1.0, 1.0, 0.0, 1.0);
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
@@ -83,7 +71,7 @@ impl ClientState for HexagonLauncher {
 	fn initial_state_update(&mut self) {
 		// Load desktop files
 		self.apps = get_desktop_files()
-			.filter_map(|d| parse_desktop_file(d).ok())
+			.filter_map(|d| DesktopFile::parse(d).ok())
 			.filter(|d| !d.no_display)
 			.map(App::new)
 			.collect();

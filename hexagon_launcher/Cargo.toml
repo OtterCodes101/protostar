@@ -20,3 +20,4 @@ serde = { workspace = true }
 stardust-xr-fusion = { workspace = true }
 asteroids = { workspace = true }
 tracing = "0.1.41"
+single = { path = "../single" }

@@ -1,24 +1,11 @@
-mod app;
-mod app_launcher;
-
-use app::App;
 use asteroids::{ClientState, CustomElement, Migrate, Reify, client, elements::Spatial};
 use clap::Parser;
 use protostar::xdg::DesktopFile;
 use serde::{Deserialize, Serialize};
-use stardust_xr_fusion::{
-	project_local_resources,
-	values::color::{Rgba, color_space::LinearRgb, rgba_linear},
-};
+use single::App;
+use stardust_xr_fusion::project_local_resources;
 use std::path::PathBuf;
 use tracing_subscriber::EnvFilter;
-
-// Constants from original implementation
-const APP_SIZE: f32 = 0.06;
-const MODEL_SCALE: f32 = 0.03;
-const ACTIVATION_DISTANCE: f32 = 0.05;
-
-const DEFAULT_HEX_COLOR: Rgba<f32, LinearRgb> = rgba_linear!(0.211, 0.937, 0.588, 1.0);
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about, long_about = None)]

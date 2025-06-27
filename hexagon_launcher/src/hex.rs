@@ -1,7 +1,8 @@
 #![allow(dead_code)]
 
-use crate::{APP_SIZE, PADDING};
 use std::ops::Add;
+
+use single::{APP_SIZE, PADDING};
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Hex {
@@ -49,7 +50,7 @@ impl Hex {
 		// Find which ring we're in and position within ring
 		let mut cells_before = 1; // Count center
 		let mut radius = 1;
-		
+
 		while cells_before + (radius * 6) <= i {
 			cells_before += radius * 6;
 			radius += 1;
@@ -57,7 +58,7 @@ impl Hex {
 
 		// Calculate steps needed within current ring
 		let pos_in_ring = i - cells_before;
-		
+
 		// Start at top of ring (same as original code)
 		let mut hex = HEX_CENTER + HEX_DIRECTION_VECTORS[4].scale(radius as isize);
 

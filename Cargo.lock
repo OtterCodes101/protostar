@@ -1445,6 +1445,7 @@ dependencies = [
  "mint",
  "protostar",
  "serde",
+ "single",
  "stardust-xr-fusion",
  "tokio",
  "tracing",

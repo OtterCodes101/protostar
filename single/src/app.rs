@@ -1,5 +1,3 @@
-use crate::app_launcher::AppLauncher;
-use crate::{ACTIVATION_DISTANCE, APP_SIZE, DEFAULT_HEX_COLOR, MODEL_SCALE};
 use asteroids::elements::{
 	Grabbable, Lines, Model, ModelPart, PointerMode, Text, line_from_points,
 };
@@ -19,6 +17,9 @@ use stardust_xr_fusion::{
 use std::f32::consts::{FRAC_PI_2, PI};
 use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, Ordering};
+
+use crate::app_launcher::AppLauncher;
+use crate::{ACTIVATION_DISTANCE, APP_SIZE, DEFAULT_HEX_COLOR, MODEL_SCALE};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct App {
@@ -44,12 +45,14 @@ impl App {
 
 	// Helper functions for creating app components
 	fn create_model(&self) -> Element<Self> {
-		self.icon.get_or_init(|| {
-			self.app
+		if self.icon.get().is_none()
+			&& let Some(icon) = self
+				.app
 				.icon(64, true)
 				.and_then(|i| i.cached_process(64).ok())
-				.unwrap()
-		});
+		{
+			let _ = self.icon.set(icon);
+		}
 		match self.icon.get().as_ref().map(|i| (i.icon_type.clone(), i)) {
 			Some((IconType::Gltf, icon)) => Model::direct(icon.path.clone())
 				.unwrap()
