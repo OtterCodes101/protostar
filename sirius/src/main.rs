@@ -1,5 +1,3 @@
-mod app;
-
 use asteroids::{
 	ClientState, CustomElement, Element, Migrate, Reify, Transformable, client,
 	elements::{Button, Grabbable, Model, ModelPart, PointerMode, Spatial},
@@ -7,24 +5,15 @@ use asteroids::{
 use clap::Parser;
 use glam::Quat;
 use mint::{Quaternion, Vector3};
-use protostar::xdg::parse_desktop_file;
+use protostar::xdg::DesktopFile;
 use serde::{Deserialize, Serialize};
+use single::{App, BTN_COLOR, BTN_SELECTED_COLOR};
 use stardust_xr_fusion::{
-	core::values::color::{Rgba, color_space::LinearRgb, rgba_linear},
-	drawable::MaterialParameter,
-	fields::Shape,
-	project_local_resources,
-	spatial::Transform,
+	drawable::MaterialParameter, fields::Shape, project_local_resources, spatial::Transform,
 };
-use std::f32::consts::{FRAC_PI_2, PI};
 use std::path::PathBuf;
 use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt, util::SubscriberInitExt};
 use walkdir::WalkDir;
-
-const APP_SIZE: f32 = 0.06;
-const ACTIVATION_DISTANCE: f32 = 0.5;
-const BTN_SELECTED_COLOR: Rgba<f32, LinearRgb> = rgba_linear!(0.0, 1.0, 0.0, 1.0);
-const BTN_DEFAULT_COLOR: Rgba<f32, LinearRgb> = rgba_linear!(1.0, 0.0, 0.0, 1.0);
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
@@ -60,7 +49,7 @@ pub struct Sirius {
 	pos: Vector3<f32>,
 	rot: Quaternion<f32>,
 	#[serde(skip)]
-	apps: Vec<app::App>,
+	apps: Vec<App>,
 }
 
 impl Default for Sirius {
@@ -101,9 +90,7 @@ impl ClientState for Sirius {
 					&& path.extension().is_some()
 					&& path.extension().unwrap() == "desktop"
 			})
-			.filter_map(|path| {
-				app::App::create_from_desktop_file(parse_desktop_file(path).ok()?).ok()
-			})
+			.filter_map(|path| App::new(DesktopFile::parse(path).ok()?).ok())
 			.collect();
 	}
 
@@ -136,7 +123,7 @@ impl ClientState for Sirius {
 					MaterialParameter::Color(if self.visible {
 						BTN_SELECTED_COLOR
 					} else {
-						BTN_DEFAULT_COLOR
+						BTN_COLOR
 					}),
 				))
 				.build(),

@@ -73,7 +73,7 @@ impl ClientState for HexagonLauncher {
 		self.apps = get_desktop_files()
 			.filter_map(|d| DesktopFile::parse(d).ok())
 			.filter(|d| !d.no_display)
-			.map(App::new)
+			.filter_map(|d| App::new(d).ok())
 			.collect();
 
 		// Sort by name

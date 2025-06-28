@@ -37,7 +37,7 @@ impl ClientState for Single {
 		let desktop_file_path = Args::parse().desktop_file;
 
 		self.app
-			.replace(App::new(DesktopFile::parse(desktop_file_path).unwrap()));
+			.replace(App::new(DesktopFile::parse(desktop_file_path).unwrap()).unwrap());
 	}
 
 	fn reify(&self) -> asteroids::Element<Self> {

@@ -3,6 +3,9 @@ name = "sirius"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+tracy = ["dep:tracing-tracy", "asteroids/tracy"]
+
 [dependencies]
 protostar = { path = "../protostar" }
 color-eyre = "0.6.2"
@@ -18,3 +21,4 @@ stardust-xr-fusion = { workspace = true }
 asteroids = { workspace = true }
 tracing = "0.1.41"
 walkdir = "2.4.0"
+single = { path = "../single" }

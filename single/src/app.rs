@@ -8,6 +8,7 @@ use protostar::application::Application;
 use protostar::xdg::{DesktopFile, Icon, IconType};
 use serde::{Deserialize, Serialize};
 use stardust_xr_fusion::drawable::{TextBounds, TextFit};
+use stardust_xr_fusion::node::NodeError;
 use stardust_xr_fusion::values::ResourceID;
 use stardust_xr_fusion::{
 	drawable::{MaterialParameter, XAlign, YAlign},
@@ -32,15 +33,15 @@ pub struct App {
 	launched: AtomicBool,
 }
 impl App {
-	pub fn new(desktop_entry: DesktopFile) -> Self {
-		let app = Application::create(desktop_entry).unwrap();
-		App {
+	pub fn new(desktop_entry: DesktopFile) -> Result<Self, NodeError> {
+		let app = Application::create(desktop_entry)?;
+		Ok(App {
 			app,
 			icon: OnceLock::default(),
 			pos: [0.0; 3].into(),
 			rot: Quat::IDENTITY.into(),
 			launched: AtomicBool::new(false),
-		}
+		})
 	}
 
 	// Helper functions for creating app components
